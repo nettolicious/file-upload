@@ -7,9 +7,13 @@ using System.Web;
 using System.Web.Http;
 using System.IO;
 using System.Web.Http.Cors;
+using NLog;
 
 namespace file_upload_api.Controllers {
     public class UploadController : ApiController {
+
+        private ILogger mLogger = LogManager.GetLogger("UploadController");
+
         // GET api/values
         public IEnumerable<string> Get() {
             return new string[] { "value1", "value2" };
@@ -39,13 +43,18 @@ namespace file_upload_api.Controllers {
                 if (HttpContext.Current.Request.Files.AllKeys.Length > 0) {
                     var httpPostedChunkFile = HttpContext.Current.Request.Files["chunkFile"];
                     if (httpPostedChunkFile != null) {
+                        mLogger.Debug("Handling chunk");
                         var saveFile = @"C:\Temp\UploadingFiles";
                         // Save the chunk file in temporery location with .part extension
                         var SaveFilePath = Path.Combine(saveFile, httpPostedChunkFile.FileName + ".part");
                         var chunkIndex = HttpContext.Current.Request.Form["chunkIndex"];
                         if (chunkIndex == "0") {
+                            var fileType = HttpContext.Current.Request.Form["fileType"];
+                            mLogger.Debug("Saving first chunk: fileType {0}", fileType);
                             httpPostedChunkFile.SaveAs(SaveFilePath);
                         } else {
+                            var fileType = HttpContext.Current.Request.Form["fileType"];
+                            mLogger.Debug("Saving chunk > 1: fileType {0}", fileType);
                             // Merge the current chunk file with previous uploaded chunk files
                             MergeChunkFile(SaveFilePath, httpPostedChunkFile.InputStream);
                             var totalChunk = HttpContext.Current.Request.Form["totalChunk"];
@@ -61,6 +70,9 @@ namespace file_upload_api.Controllers {
                     var httpPostedFile = HttpContext.Current.Request.Files["UploadFiles"];
 
                     if (httpPostedFile != null) {
+                        var fileType = HttpContext.Current.Request.Form["fileType"];
+                        mLogger.Debug("Handling file (non-chunked): fileType {0}", fileType);
+
                         var fileSave = @"C:\Temp\UploadedFiles";
                         var fileSavePath = Path.Combine(fileSave, httpPostedFile.FileName);
                         if (!File.Exists(fileSavePath)) {
